@@ -48,6 +48,7 @@ module KrakenClient
         case endpoint_name
           when 'Ledgers'        then 2
           when 'TradesHistory'  then 2
+          when 'ClosedOrders'   then 2
           when 'AddOrder'       then 0
           when 'CancelOrder'    then 0
           else                       1
