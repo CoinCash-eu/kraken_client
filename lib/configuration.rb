@@ -1,8 +1,8 @@
 module KrakenClient
   class Configuration
 
-    attr_accessor :api_key, :api_secret, :base_uri, :limiter_interface,
-                  :api_version, :tier, :limiter, :limit_current_count
+    attr_accessor :api_key, :api_secret, :base_uri, :api_version,
+                  :limiter, :tier, :redis, :limiter_interface
 
     def initialize
       @api_key             = ENV['KRAKEN_API_KEY']
@@ -11,6 +11,9 @@ module KrakenClient
       @api_version         = 0
       @limiter             = true
       @tier                = 2
+      # Define your redis instance for storing the counter
+      # to enable ratelimiting across multiple processes
+      @redis               = nil
 
       @limiter_interface ||= KrakenClient::Requests::Limiter.new(self)
     end

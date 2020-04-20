@@ -1,80 +1,94 @@
+require 'kraken_client/requests/limiter/store'
+require 'kraken_client/requests/limiter/memory_store'
+require 'kraken_client/requests/limiter/redis_store'
+
 module KrakenClient
   module Requests
     class Limiter
 
-      attr_reader :config, :previous_timestamps, :endpoint_name, :current_count
+      attr_reader :config, :endpoint_name, :store
 
       def initialize(config)
-        @config              = config
-        @previous_timestamps = Time.now
-        @current_count       = counter_total
+        @config = config
+
+        @store = if config.redis
+          RedisStore.new config.redis, config.api_key[0..11]
+        else
+          MemoryStore.new
+        end
       end
 
       def update(endpoint_name)
         return unless config.limiter
         @endpoint_name = endpoint_name
 
-        decrement_current_count
+        decrease_counter
+
+        sleep_if_limit_hit
       end
 
       private
 
-      # Adds the number of seconds depending of the current tier value
-      def refresh_current_count
-        @current_count += ((Time.now - previous_timestamps) / seconds_to_decrement).to_int
-        @current_count = counter_total if current_count > counter_total
-
-        current_count
-      end
-
-      def decrement_current_count
-        @current_count -= value_to_decrement
-
-        if current_count < 0
-          sleep value_to_decrement
-
-          @current_count = value_to_decrement
-
-          update(endpoint_name)
+      def sleep_if_limit_hit
+        count = store.get_count
+        if count >= counter_total
+          overflow = count - counter_total
+          request_consumption = request_weight * seconds_to_decrement
+          wait_time = request_weight + overflow
+          sleep wait_time
+          update endpoint_name
         else
-          refresh_current_count
-
-          @previous_timestamps = Time.now
+          store.incr_count request_weight
         end
       end
 
-      def value_to_decrement
-
-        case endpoint_name
-          when 'Ledgers'        then 2
-          when 'TradesHistory'  then 2
-          when 'ClosedOrders'   then 2
-          when 'AddOrder'       then 0
-          when 'CancelOrder'    then 0
-          else                       1
+      def decrease_counter
+        now = Time.now
+        previous_timestamp = store.get_timestamp
+        time_elapsed_in_secs = now - previous_timestamp
+        store.set_timestamp now
+        decrement = time_elapsed_in_secs / seconds_to_decrement
+        result = store.get_count - decrement
+        if result < 0
+          store.set_count 0
+        else
+          store.incr_count(-decrement)
         end
+      end
+
+      def request_weight
+        case endpoint_name
+          when 'Ledgers', 'TradesHistory', 'ClosedOrders'
+            2
+          when 'AddOrder', 'CancelOrder'
+            0
+          else
+            1
+        end.to_f
       end
 
       def counter_total
-        @counter ||=  case config.tier
-                        when 0 then 10
-                        when 1 then 10
-                        when 2 then 10
-                        when :starter then 15
-                        when 3, :intermediate then 20
-                        when 4, :pro then 20
-                      end
+        @counter_total ||=  case config.tier
+          when 0 then 10
+          when 1 then 10
+          when 2 then 10
+          when :starter then 15
+          when 3, :intermediate then 20
+          when 4, :pro then 20
+          when :pro_safe then 16
+        end.to_f
       end
 
       def seconds_to_decrement
-        @decrement ||=  case config.tier
-                          when 0 then 5
-                          when 1 then 5
-                          when 2 then 5
-                          when :starter then 3
-                          when 3, :intermediate then 2
-                          when 4, :pro then 1
-                        end
+        @seconds_to_decrement ||=  case config.tier
+          when 0 then 5
+          when 1 then 5
+          when 2 then 5
+          when :starter then 3
+          when 3, :intermediate then 2
+          when 4, :pro then 1
+          when :pro_safe then 1.4
+        end.to_f
       end
     end
   end
