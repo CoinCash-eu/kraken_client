@@ -59,8 +59,9 @@ module KrakenClient
                         when 0 then 10
                         when 1 then 10
                         when 2 then 10
-                        when 3 then 20
-                        when 4 then 20
+                        when :starter then 15
+                        when 3, :intermediate then 20
+                        when 4, :pro then 20
                       end
       end
 
@@ -69,8 +70,9 @@ module KrakenClient
                           when 0 then 5
                           when 1 then 5
                           when 2 then 5
-                          when 3 then 2
-                          when 4 then 1
+                          when :starter then 3
+                          when 3, :intermediate then 2
+                          when 4, :pro then 1
                         end
       end
     end
