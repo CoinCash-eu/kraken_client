@@ -46,7 +46,7 @@ module KrakenClient
       def value_to_decrement
 
         case endpoint_name
-          when 'Ledger'         then 2
+          when 'Ledgers'        then 2
           when 'TradesHistory'  then 2
           when 'AddOrder'       then 0
           when 'CancelOrder'    then 0
