@@ -5,8 +5,8 @@ module KrakenClient
                   :limiter, :tier, :redis, :limiter_interface
 
     def initialize
-      @api_key             = ENV['KRAKEN_API_KEY']
-      @api_secret          = ENV['KRAKEN_API_SECRET']
+      @api_key             = nil
+      @api_secret          = nil
       @base_uri            = 'https://api.kraken.com'
       @api_version         = 0
       @limiter             = true
