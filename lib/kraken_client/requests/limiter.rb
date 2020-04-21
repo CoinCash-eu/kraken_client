@@ -72,27 +72,33 @@ module KrakenClient
       end
 
       def counter_total
-        @counter_total ||=  case config.tier
-          when 0 then 10
-          when 1 then 10
-          when 2 then 10
-          when :starter then 15
-          when 3, :intermediate then 20
-          when 4, :pro then 20
-          when :pro_safe then 16
-        end.to_f
+        @counter_total ||=  begin
+          max_call_count = case config.tier
+            when :starter then 15
+            when :intermediate then 20
+            when :pro then 20
+          end.to_f
+          if config.limiter_call_count_safety_buffer
+            [max_call_count - config.limiter_call_count_safety_buffer, 2.0].max
+          else
+            max_call_count
+          end
+        end
       end
 
       def seconds_to_decrement
-        @seconds_to_decrement ||=  case config.tier
-          when 0 then 5
-          when 1 then 5
-          when 2 then 5
-          when :starter then 3
-          when 3, :intermediate then 2
-          when 4, :pro then 1
-          when :pro_safe then 1.4
-        end.to_f
+        @seconds_to_decrement ||=  begin
+          seconds_to_call_count_reduction = case config.tier
+            when :starter then 3
+            when :intermediate then 2
+            when :pro then 1
+          end.to_f
+          if config.limiter_slowdown_ratio
+            seconds_to_call_count_reduction * config.limiter_slowdown_ratio
+          else
+            seconds_to_call_count_reduction
+          end
+        end
       end
     end
   end
