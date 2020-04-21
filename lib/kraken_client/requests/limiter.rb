@@ -12,7 +12,11 @@ module KrakenClient
         @config = config
 
         @store = if config.redis
-          RedisStore.new config.redis, config.api_key[0..11]
+          counter_space = if config.api_key
+            config.api_key[0..11]
+          end
+
+          RedisStore.new config.redis, counter_space
         else
           MemoryStore.new
         end
